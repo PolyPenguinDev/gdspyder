@@ -136,15 +136,22 @@ def colorToTuple(color: Color):
 def tupleToColor(color: tuple):
     return Color(color[0],color[1],color[2],color[3])
 
-
-def createTexture(size: tuple, fragment:callable):
+def createTexture(size: tuple, fragment: callable, quality=1, scale=1):
+    size *= scale
     width, height = vectorToTuple(size)
-    out = Image.new('RGBA', (width, height), 0xffffff)
+    out = Image.new('RGBA', (width, height), 0xffffff) 
     for x in range(width):
         for y in range(height):
-            color = colorToTuple(fragment(Vector2(x, y)))
-            out.putpixel((x,y), color)
+            color = Color(0, 0, 0, 0)
+            qual = quality * quality  # Total number of samples
+            for lx in range(quality):
+                for ly in range(quality):
+                    sample_x = (x + (lx + 0.5) / quality) / scale
+                    sample_y = (y + (ly + 0.5) / quality) / scale
+                    color += fragment(Vector2(sample_x, sample_y))
+            out.putpixel((x, y), colorToTuple(color / qual))
     return out
+
 def texture(TEXTURE, TEXTURECOORD):
     return tupleToColor(TEXTURE.getpixel(vectorToTuple(TEXTURECOORD)))
 def shader(image: Image, fragment:callable):

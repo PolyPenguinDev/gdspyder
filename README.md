@@ -15,7 +15,7 @@ def fragmentTexture(UV):
     COLOR.g = UV.y
     return COLOR
 size = Vector2(100, 100)
-image = createTexture(size, fragmentTexture)
+image = createTexture(size, fragmentTexture, scale = 2, quality=5) #scale can run your script at a higher res, and quality allows anti-aliasing
 image.save("path/to/image.png")
 ```
 
