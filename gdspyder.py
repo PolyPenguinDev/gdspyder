@@ -1,4 +1,5 @@
 from PIL import Image
+import threading
 
 class Color:
     def __init__(self, r, g, b, a):
@@ -137,16 +138,35 @@ def colorToTuple(color: Color):
 def tupleToColor(color: tuple):
     return Color(color[0],color[1],color[2],color[3])
 
-def createTexture(size: Vector2, fragment: callable, quality=1, scale=1) -> Image.Image:
+def create_rectangles(start_x, end_x, start_y, end_y, fragment, scale, image):
+    for x in range(start_x, end_x):
+        for y in range(start_y, end_y):
+            color = fragment(Vector2(x/scale, y/scale))
+            image.putpixel((x, y), colorToTuple(color))
+
+def createTexture(size: Vector2, fragment: callable, quality=1, scale=1, num_threads=1) -> Image.Image:
     if quality != 1:
-        return createTexture(size*quality, fragment, 1, quality*scale).resize((size.x, size.y), Image.BILINEAR)
+        return createTexture(size*quality, fragment, 1, scale, num_threads).resize((size.x, size.y))
     
     width, height = vectorToTuple(size)
-    out = Image.new('RGBA', (width, height), 0xffffff) 
-    
-    for x in range(width):
-        for y in range(height):
-            out.putpixel((x, y), colorToTuple(fragment(Vector2(x/scale, y/scale))))
+    out = Image.new('RGBA', (width, height), (255, 255, 255, 255)) # Initialize output image
+
+    threads = []
+    chunk_size_x = width // num_threads
+    chunk_size_y = height // num_threads
+
+    for i in range(num_threads):
+        start_x = i * chunk_size_x
+        end_x = (i + 1) * chunk_size_x
+        start_y = 0
+        end_y = height
+        thread = threading.Thread(target=create_rectangles, args=(start_x, end_x, start_y, end_y, fragment, scale, out))
+        threads.append(thread)
+        thread.start()
+
+    for thread in threads:
+        thread.join()
+
     return out
 
 def texture(TEXTURE, TEXTURECOORD):
