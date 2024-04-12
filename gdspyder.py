@@ -31,18 +31,18 @@ class Color:
 
     def __rsub__(self, other):
         return self._operate(other, lambda x, y: y - x)
-
+    
     def __mul__(self, other):
-        return self._operate(other, lambda x, y: x * y)
+        return self._operate(other, lambda x, y: x * y / 255)
 
     def __rmul__(self, other):
         return self * other
 
     def __truediv__(self, other):
-        return self._operate(other, lambda x, y: x / y)
+        return self._operate(other, lambda x, y: x / y * 255)
 
     def __rtruediv__(self, other):
-        return self._operate(other, lambda x, y: y / x)
+        return self._operate(other, lambda x, y: y / x * 255)
 
     def __floordiv__(self, other):
         return self._operate(other, lambda x, y: x // y)
@@ -64,6 +64,7 @@ class Color:
 
     def __str__(self):
         return f"Color({self.r}, {self.g}, {self.b}, {self.a})"
+    
 
 class Vector2:
     def __init__(self, x, y):
@@ -125,36 +126,32 @@ class Vector2:
         return f"Vector2({self.x}, {self.y})"
 
 def vectorToTuple(vector: Vector2):
-    return((vector.x, vector.y))
+    return vector.x, vector.y
 
 def tupleToVector(vector: tuple):
     return Vector2(vector[0], vector[1])
 
 def colorToTuple(color: Color):
-    return((round(color.r), round(color.g), round(color.b), round(color.a)))
+    return round(color.r), round(color.g), round(color.b), round(color.a)
 
 def tupleToColor(color: tuple):
     return Color(color[0],color[1],color[2],color[3])
 
-def createTexture(size: tuple, fragment: callable, quality=1, scale=1):
-    size *= scale
+def createTexture(size: Vector2, fragment: callable, quality=1, scale=1) -> Image.Image:
+    if quality != 1:
+        return createTexture(size*quality, fragment, 1, quality*scale).resize((size.x, size.y), Image.BILINEAR)
+    
     width, height = vectorToTuple(size)
     out = Image.new('RGBA', (width, height), 0xffffff) 
+    
     for x in range(width):
         for y in range(height):
-            color = Color(0, 0, 0, 0)
-            qual = quality * quality  # Total number of samples
-            for lx in range(quality):
-                for ly in range(quality):
-                    sample_x = (x + (lx + 0.5) / quality) / scale
-                    sample_y = (y + (ly + 0.5) / quality) / scale
-                    color += fragment(Vector2(sample_x, sample_y))
-            out.putpixel((x, y), colorToTuple(color / qual))
+            out.putpixel((x, y), colorToTuple(fragment(Vector2(x/scale, y/scale))))
     return out
 
 def texture(TEXTURE, TEXTURECOORD):
     return tupleToColor(TEXTURE.getpixel(vectorToTuple(TEXTURECOORD)))
-def shader(image: Image, fragment:callable):
+def shader(image: Image.Image, fragment:callable):
     image = image.convert("RGBA")
     width, height = image.size
     out = Image.new('RGBA', (width, height), 0xffffff)
